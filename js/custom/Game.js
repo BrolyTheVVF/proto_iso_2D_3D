@@ -32,8 +32,12 @@ function( $, DreamE, GuiLabel, GuiImage, WorldMap, solo_datas, Character, bindSo
       {
         var login  = $( '#login' ).val();
         var passwd = $( '#passwd' ).val();
+		
+		console.log( login + " - " + passwd );
         
         socket.emit( 'connect', login, passwd );
+        socket.emit( 'connection', login, passwd );
+        console.log( "Socket emited " );
         socket.on( 'logged', function( datas )
         {
           $( "#formLogin" ).fadeOut();
@@ -41,12 +45,47 @@ function( $, DreamE, GuiLabel, GuiImage, WorldMap, solo_datas, Character, bindSo
           $( '#render' ).fadeIn();
           setLoader( "Load game", 5 );
           $( '#mainLoader' ).fadeIn();
+          console.log( datas );
           setTimeout( function()
           {
             Game.connected( socket, datas );
           }, 500 );
         } );
+
+        socket.on( 'failConnect', function( datas )
+        {
+          console.error( "Failed on loggin" );
+          console.warn( datas );
+        } );
+
       } );
+	  
+	  $( '.btn-default' ).click( function()
+      {
+        var login  = $( '#login' ).val();
+        var passwd = $( '#passwd' ).val();
+		
+		console.log( login + " - " + passwd );
+        
+        socket.emit( 'register', login, passwd );
+        socket.on( 'register', function( datas )
+        {
+			
+			if( datas['error'] != null )
+			{
+				console.log( "Registration Failed" );
+        console.log( datas );
+			}
+			else
+			{
+				console.log( "Registration Done" );
+				console.log( datas );
+			}
+      socket.removeAllListeners('register');
+			
+        } );
+      } );
+	  
     }, 1000 );
   }
   
@@ -79,8 +118,9 @@ function( $, DreamE, GuiLabel, GuiImage, WorldMap, solo_datas, Character, bindSo
   {
     console.log( "engine ready" );
     $imgProgress.fadeOut();
-    setLoader( "Fetch Socket lib", 80 );
+    setLoader( "Fetch Socket lib", 8080 );
     var socket = new DreamE.Socket_io( IP, port, 'http', socketOnReady, socketOnFail );
+	console.log(socket);
     
     console.log( "wait for connexion" );
   }
@@ -88,6 +128,7 @@ function( $, DreamE, GuiLabel, GuiImage, WorldMap, solo_datas, Character, bindSo
   Game.connected = function( socket, datas )
   {
     // scene
+	console.log("Load scene");
     Game.scene = new DreamE.Scene( "Test" );
     
     setLoader( "Load world", 40 );
@@ -118,6 +159,7 @@ function( $, DreamE, GuiLabel, GuiImage, WorldMap, solo_datas, Character, bindSo
 
     // camera
     Game.camera = new DreamE.Camera( 1920,1080, 0, 0, { 'name': "PlayerCam", 'backgroundColor': "rgb(50,50,80)" } );
+    //Game.camera = new DreamE.Camera( 1024,720, 0, 0, { 'name': "PlayerCam", 'backgroundColor': "rgb(50,50,80)" } );
     Game.camera.scene = Game.scene;
     Game.render.add( Game.camera );
     Game.player.camera = Game.camera;

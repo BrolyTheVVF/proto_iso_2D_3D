@@ -41,7 +41,7 @@
 		var updateRate = function(){};
 
 		//Updates chrome
-		if (detectBrowser("chrome"))
+		/*if (detectBrowser("chrome"))
 		{
 			updateChange = function(cTime)
 			{
@@ -100,7 +100,7 @@
 				}
 			}
 		
-		}
+		}*/
 		
 		
 		var bindWindowController = function(gamepadState)

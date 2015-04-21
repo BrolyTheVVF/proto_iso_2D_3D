@@ -1,60 +1,81 @@
-define( [ 'colors', 'scripts/accounts', 'scripts/tools', 'scripts/mapDatas', 'scripts/Player', 'scripts/sharedDatas' ],
-function( colors, accounts, tools, mapDatas, Player, sharedDatas )
+define( [ 'colors', 'scripts/accounts', 'scripts/tools', 'scripts/mapDatas', 'scripts/Player', 'scripts/sharedDatas', 'scripts/dataBase' ],
+function( colors, accounts, tools, mapDatas, Player, sharedDatas, dataBase )
 {
   var socketEvents = [];
   
   // public users
   socketEvents[ 0 ] = {
-    'connect': function( login, passwd )
+    'connection': function( login, passwd )
     {
-      account = tools.findWhereIn( { 'login': login, 'passwd': passwd }, accounts );
-      if ( account )
+      console.log( "Console log on account in socketEvent : " );
+      if( accounts != null )
       {
-        console.myLog( "Hello " + login + " using IP: " + this.IP + ", successfully logged with access " + account.access
-                      , colors.info );
-        this.account = account;
-        this.setAccess( account.access );
-        if ( !sharedDatas.players[ account.id ] )
-          this.player = new Player( account.id, account.player );
-        else
-          this.player = sharedDatas.players[ account.id ];
-        
-        this.player.socket = this;
-        sharedDatas.players[ account.id ] = this.player;
-        sharedDatas.playersLinkName[ this.player.nick ] = account.id;
-        var datas = {};
-        datas.myIndex = this.player.index;
-        
-        // TODO - get only players in the same area, and friends, and guilds
-        datas.players = tools.toJSON( sharedDatas.players, null, this.player.index );
-        
-        sharedDatas.nPlayers = 0;
-        for ( var i in sharedDatas.players )
+        console.myLog( "Attempt to connect : Log - " + login + " --- pass - " + passwd, colors.warn );
+        account = tools.findWhereIn( { 'login': login, 'passwd': passwd }, accounts );
+        console.log( account );
+        if ( account != null && account != [] && account.player != null )
         {
-          if ( sharedDatas.players[ i ].formatDatas )
-            ++sharedDatas.nPlayers;
+          console.myLog( "Hello " + login + " using IP: " + this.IP + ", successfully logged with access " + account.access
+                        , colors.info );
+          this.account = account;
+          this.setAccess( account.access );
+          if ( !sharedDatas.players[ account.id ] )
+            this.player = new Player( account.id, account.player );
+          else
+            this.player = sharedDatas.players[ account.id ];
+          
+          this.player.socket = this;
+          sharedDatas.players[ account.id ] = this.player;
+          sharedDatas.playersLinkName[ this.player.nick ] = account.id;
+          var datas = {};
+          datas.myIndex = this.player.index;
+          
+          // TODO - get only players in the same area, and friends, and guilds
+          datas.players = tools.toJSON( sharedDatas.players, null, this.player.index );
+          
+          sharedDatas.nPlayers = 0;
+          for ( var i in sharedDatas.players )
+          {
+            if ( sharedDatas.players[ i ].formatDatas )
+              ++sharedDatas.nPlayers;
+          }
+          
+          console.myLog( sharedDatas.nPlayers + " players connected", colors.data, 5 )
+          // TODO - get a method to get only datas for given area and for world datas
+          datas.chunksSizes = { "x": 30, "y": 30, "z": 4 };
+          datas.mapDatas = mapDatas;
+          //datas.worldEntities = entities;
+          
+          /*this.manager.sockets.emit( 'playerJoin', this.player.index, this.player.toJSON() );*/ //I don't know what the hell is this :D
+          this.emit( 'logged', datas );
         }
-        
-        console.myLog( sharedDatas.nPlayers + " players connected", colors.data, 5 )
-        // TODO - get a method to get only datas for given area and for world datas
-        datas.chunksSizes = { "x": 30, "y": 30, "z": 4 };
-        datas.mapDatas = mapDatas;
-        //datas.worldEntities = entities;
-        
-        this.manager.sockets.emit( 'playerJoin', this.player.index, this.player.toJSON() );
-        this.emit( 'logged', datas );
+        else
+        {
+          console.myLog( login + " fail connect", colors.error );
+          this.emit( 'failConnect', 'Check password and login' );
+        }
       }
       else
       {
-        console.myLog( login + " fail connect", colors.error );
-        this.emit( 'failConnect', 'Check password and login' );
+        console.myLog( "Fail to load account datas", colors.error );
+        this.emit( 'failConnect', 'Fatal server error, plz try again later' );
       }
     }
     
-    , 'register': function( login, email, passwd, token )
+    , 'register': function( login, passwd, email, token )//What is the token? u_u
     {
-      console.myLog( "Try register", colors.error );
-      this.emit( 'register', 'Not yet, sorry' );
+      var reg = dataBase.register( login, passwd );
+      if( reg === true )
+      {
+        dataBase.accAddPlayer( login );
+        console.myLog( "Registration can be done now.", colors.info );
+        this.emit( 'register', { "done": "Registration can be done now."} );
+      }
+      else
+      {
+        console.myLog( "Registration Error", colors.error );
+        this.emit( 'register', reg );
+      }
     }
   };
   
@@ -66,7 +87,8 @@ function( colors, accounts, tools, mapDatas, Player, sharedDatas )
   socketEvents[ 1 ] = {
     'playerLeave': function()
     {
-      this.manager.sockets.emit( 'playerLeave', this.player.index );
+      //this.manager.sockets.emit( 'playerLeave', this.player.index );
+      this.amit( 'playerLeave', this.player.index );
     }
     ,'changedInput': function( inputs, position )
     {
@@ -77,7 +99,7 @@ function( colors, accounts, tools, mapDatas, Player, sharedDatas )
         // sockets in the range area from user
         // this range is updated when players change chunk
         // store all sockets by chunks, and made a chunks.emit with propagation to chunk +1 pos
-        this.manager.sockets.emit( 'playerInputs', this.player.index, this.player.inputs, this.player.position );
+        //this.manager.sockets.emit( 'playerInputs', this.player.index, this.player.inputs, this.player.position );
         
         // TODO - attack input
         // if the player use an attack input we have to check if the delay between 2 attack is good

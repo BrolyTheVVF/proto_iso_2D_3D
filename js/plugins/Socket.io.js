@@ -26,18 +26,21 @@ function( DE )
     
     this.init = function( failed )
     {
-      if ( this.inited )
-        return;
-      this.inited = true;
-      
-      if ( failed )
-      {
-        onError();
-        return;
-      }
-      
-      this.socket = io.connect( this.protocol + '://' + this.IP + ':' + this.port );
-      onReady( this.socket );
+		console.log("Init socket");
+		if ( this.inited )
+			return;
+		this.inited = true;
+		
+		if ( failed )
+		{
+			console.log("Error init socket");
+			onError();
+			return;
+		}
+		
+		console.log("Socket inited");
+		this.socket = io.connect( this.protocol + '://' + this.IP + ':' + this.port );
+		onReady( this.socket );
     }
   }
 } );
